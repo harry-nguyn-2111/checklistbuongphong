@@ -1,401 +1,140 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+import os
+from datetime import datetime
 
-<title>Housekeeping Checklist</title>
+import pandas as pd
+import streamlit as st
 
-<style>
-* {
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
-}
+st.set_page_config(page_title="Housekeeping Checklist", page_icon="🏨", layout="wide")
 
-body {
-    margin: 0;
-    background: #f3f5f7;
-    color: #222;
-}
+rooms = [f"Phòng {i}" for i in range(101, 111)]
 
-header {
-    background: #1f4e79;
-    color: white;
-    padding: 20px;
-    text-align: center;
-}
-
-header h1 {
-    margin: 0 0 5px;
-}
-
-.container {
-    max-width: 1100px;
-    margin: auto;
-    padding: 20px;
-}
-
-.room-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 15px;
-}
-
-.room-card {
-    background: white;
-    border-radius: 12px;
-    padding: 18px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-}
-
-.room-card h2 {
-    margin-top: 0;
-}
-
-.status {
-    display: inline-block;
-    padding: 6px 10px;
-    border-radius: 20px;
-    font-size: 13px;
-    margin-bottom: 10px;
-    background: #ffe8a1;
-}
-
-.progress-container {
-    background: #ddd;
-    border-radius: 10px;
-    height: 10px;
-    overflow: hidden;
-    margin: 10px 0;
-}
-
-.progress {
-    height: 100%;
-    width: 0%;
-    background: #28a745;
-    transition: 0.3s;
-}
-
-.category {
-    margin-top: 18px;
-}
-
-.category h3 {
-    margin-bottom: 8px;
-    color: #1f4e79;
-}
-
-label {
-    display: block;
-    padding: 8px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-}
-
-label:hover {
-    background: #f5f5f5;
-}
-
-input[type="checkbox"] {
-    margin-right: 8px;
-    transform: scale(1.2);
-}
-
-button {
-    width: 100%;
-    margin-top: 15px;
-    padding: 11px;
-    border: none;
-    border-radius: 8px;
-    background: #1f4e79;
-    color: white;
-    cursor: pointer;
-    font-size: 15px;
-}
-
-button:hover {
-    background: #163b5c;
-}
-
-.completed {
-    background: #d4edda;
-    color: #155724;
-}
-
-.employee {
-    margin-bottom: 20px;
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-}
-
-.employee input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-    <h1>🏨 HOUSEKEEPING CHECKLIST</h1>
-    <p>Kiểm tra công việc nhân viên buồng phòng</p>
-</header>
-
-<div class="container">
-
-    <div class="employee">
-        <label>
-            Tên nhân viên:
-            <input
-                type="text"
-                id="employeeName"
-                placeholder="Nhập tên nhân viên..."
-            >
-        </label>
-    </div>
-
-    <div class="room-list" id="roomList"></div>
-
-</div>
-
-<script>
-
-const rooms = [
-    "Phòng 101",
-    "Phòng 102",
-    "Phòng 103",
-    "Phòng 104",
-    "Phòng 105",
-    "Phòng 106",
-    "Phòng 107",
-    "Phòng 108",
-    "Phòng 109",
-    "Phòng 110"
-];
-
-const checklist = {
-
+checklist = {
     "Công việc chính": [
-        "Dọn phòng",
-        "Thay ga giường",
-        "Thay vỏ gối",
-        "Thay khăn",
-        "Hút bụi sàn",
-        "Lau sàn",
-        "Lau bụi nội thất",
-        "Kiểm tra mùi phòng",
-        "Kiểm tra điều hòa",
-        "Kiểm tra đèn điện"
+        "Dọn phòng", "Thay ga giường", "Thay vỏ gối", "Thay khăn",
+        "Hút bụi sàn", "Lau sàn", "Lau bụi nội thất",
+        "Kiểm tra mùi phòng", "Kiểm tra điều hòa", "Kiểm tra đèn điện",
     ],
-
     "Đồ đạc trong phòng": [
-        "Mini bar",
-        "Giường",
-        "Tủ quần áo",
-        "Bàn",
-        "Ghế",
-        "Rèm cửa",
-        "Tivi",
-        "Điện thoại",
-        "Két an toàn",
-        "Ấm đun nước",
-        "Máy sấy tóc"
+        "Mini bar", "Giường", "Tủ quần áo", "Bàn", "Ghế", "Rèm cửa",
+        "Tivi", "Điện thoại", "Két an toàn", "Ấm đun nước", "Máy sấy tóc",
     ],
-
     "Đồ vệ sinh cá nhân": [
-        "Dầu gội",
-        "Sữa tắm",
-        "Xà phòng",
-        "Bàn chải đánh răng",
-        "Kem đánh răng",
-        "Mũ tắm",
-        "Dao cạo râu",
-        "Giấy vệ sinh",
-        "Khăn mặt",
-        "Khăn tay",
-        "Khăn tắm"
+        "Dầu gội", "Sữa tắm", "Xà phòng", "Bàn chải đánh răng",
+        "Kem đánh răng", "Mũ tắm", "Dao cạo râu", "Giấy vệ sinh",
+        "Khăn mặt", "Khăn tay", "Khăn tắm",
     ],
-
     "Phòng tắm": [
-        "Bồn cầu sạch",
-        "Lavabo sạch",
-        "Gương sạch",
-        "Vòi sen sạch",
-        "Sàn phòng tắm sạch",
-        "Thùng rác",
-        "Không có tóc/rác",
-        "Kiểm tra nước nóng",
-        "Kiểm tra thoát nước"
+        "Bồn cầu sạch", "Lavabo sạch", "Gương sạch", "Vòi sen sạch",
+        "Sàn phòng tắm sạch", "Thùng rác", "Không có tóc/rác",
+        "Kiểm tra nước nóng", "Kiểm tra thoát nước",
     ],
-
     "Kiểm tra cuối": [
-        "Kiểm tra tài sản khách",
-        "Kiểm tra đồ thất lạc",
-        "Kiểm tra cửa phòng",
-        "Kiểm tra khóa cửa",
-        "Tắt các thiết bị không cần thiết",
-        "Đóng cửa sổ",
-        "Xịt khử mùi",
-        "Phòng sẵn sàng đón khách"
-    ]
-};
-
-
-// Tạo 10 phòng
-function createRooms() {
-
-    const roomList = document.getElementById("roomList");
-
-    rooms.forEach((room, roomIndex) => {
-
-        const card = document.createElement("div");
-
-        card.className = "room-card";
-
-        let html = `
-            <h2>${room}</h2>
-
-            <span
-                class="status"
-                id="status-${roomIndex}">
-                Chưa hoàn thành
-            </span>
-
-            <div class="progress-container">
-                <div
-                    class="progress"
-                    id="progress-${roomIndex}">
-                </div>
-            </div>
-
-            <div id="checklist-${roomIndex}">
-        `;
-
-        let itemIndex = 0;
-
-        for (const category in checklist) {
-
-            html += `
-                <div class="category">
-                    <h3>${category}</h3>
-            `;
-
-            checklist[category].forEach(item => {
-
-                const id =
-                    `room-${roomIndex}-item-${itemIndex}`;
-
-                html += `
-                    <label>
-                        <input
-                            type="checkbox"
-                            id="${id}"
-                            onchange="updateRoom(${roomIndex})">
-                        ${item}
-                    </label>
-                `;
-
-                itemIndex++;
-            });
-
-            html += `</div>`;
-        }
-
-        html += `
-            </div>
-
-            <button
-                onclick="completeRoom(${roomIndex})">
-                ✓ Hoàn thành phòng
-            </button>
-        `;
-
-        card.innerHTML = html;
-
-        roomList.appendChild(card);
-    });
+        "Kiểm tra tài sản khách", "Kiểm tra đồ thất lạc",
+        "Kiểm tra cửa phòng", "Kiểm tra khóa cửa",
+        "Tắt các thiết bị không cần thiết", "Đóng cửa sổ",
+        "Xịt khử mùi", "Phòng sẵn sàng đón khách",
+    ],
 }
 
+TOTAL_ITEMS = sum(len(v) for v in checklist.values())
+HISTORY_FILE = "housekeeping_history.csv"
 
-// Cập nhật tiến độ phòng
-function updateRoom(roomIndex) {
+st.markdown("""
+<style>
+.main-title {background:#1f4e79;color:white;padding:20px;border-radius:12px;
+text-align:center;margin-bottom:20px}
+.room-card {background:white;border:1px solid #e5e7eb;border-radius:12px;
+padding:12px;margin-bottom:8px}
+</style>
+""", unsafe_allow_html=True)
 
-    const checkboxes = document.querySelectorAll(
-        `#checklist-${roomIndex} input[type="checkbox"]`
-    );
+st.markdown("""
+<div class="main-title">
+<h1>🏨 HOUSEKEEPING CHECKLIST</h1>
+<p>Kiểm tra công việc nhân viên buồng phòng</p>
+</div>
+""", unsafe_allow_html=True)
 
-    const checked = [...checkboxes]
-        .filter(item => item.checked)
-        .length;
+employee = st.text_input("👤 Tên nhân viên", placeholder="Nhập tên nhân viên...")
 
-    const total = checkboxes.length;
+def key(room_i, cat_i, item_i):
+    return f"room_{room_i}_{cat_i}_{item_i}"
 
-    const percent = Math.round(
-        (checked / total) * 100
-    );
+def room_progress(room_i):
+    done = 0
+    for cat_i, items in enumerate(checklist.values()):
+        for item_i in range(len(items)):
+            if st.session_state.get(key(room_i, cat_i, item_i), False):
+                done += 1
+    return done, (done / TOTAL_ITEMS if TOTAL_ITEMS else 0)
 
-    document.getElementById(
-        `progress-${roomIndex}`
-    ).style.width = percent + "%";
+selected = st.selectbox("🚪 Chọn phòng", range(len(rooms)),
+                        format_func=lambda i: rooms[i])
 
-    const status = document.getElementById(
-        `status-${roomIndex}`
-    );
+st.subheader(f"🛏️ {rooms[selected]}")
 
-    if (percent === 100) {
+for cat_i, (category, items) in enumerate(checklist.items()):
+    st.markdown(f"### 📌 {category}")
+    for item_i, item in enumerate(items):
+        st.checkbox(item, key=key(selected, cat_i, item_i))
 
-        status.innerText = "✓ Hoàn thành";
-        status.classList.add("completed");
+done, progress = room_progress(selected)
 
-    } else if (percent > 0) {
+c1, c2, c3 = st.columns(3)
+c1.metric("Đã hoàn thành", f"{done}/{TOTAL_ITEMS}")
+c2.metric("Tiến độ", f"{progress * 100:.0f}%")
+c3.metric("Trạng thái", "✓ Hoàn thành" if progress == 1 else
+          ("Đang làm" if progress > 0 else "Chưa hoàn thành"))
+st.progress(progress)
 
-        status.innerText =
-            `Đang làm - ${percent}%`;
+if st.button("✓ Hoàn thành phòng", type="primary", use_container_width=True):
+    if not employee.strip():
+        st.warning("⚠️ Vui lòng nhập tên nhân viên.")
+    elif progress < 1:
+        st.warning("⚠️ Phòng chưa hoàn thành tất cả checklist.")
+    else:
+        record = pd.DataFrame([{
+            "Thời gian": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Nhân viên": employee.strip(),
+            "Phòng": rooms[selected],
+            "Đã hoàn thành": done,
+            "Tổng checklist": TOTAL_ITEMS,
+            "Tiến độ": "100%",
+            "Trạng thái": "Hoàn thành",
+        }])
+        if os.path.exists(HISTORY_FILE):
+            try:
+                old = pd.read_csv(HISTORY_FILE)
+                record = pd.concat([old, record], ignore_index=True)
+            except Exception:
+                pass
+        record.to_csv(HISTORY_FILE, index=False, encoding="utf-8-sig")
+        st.success(f"🎉 {rooms[selected]} đã hoàn thành và sẵn sàng đón khách!")
 
-        status.classList.remove("completed");
+st.markdown("---")
+st.subheader("🏨 Tổng quan 10 phòng")
 
-    } else {
+cols = st.columns(5)
+for i, room in enumerate(rooms):
+    done_i, progress_i = room_progress(i)
+    with cols[i % 5]:
+        st.markdown(f'<div class="room-card"><strong>{room}</strong></div>',
+                    unsafe_allow_html=True)
+        st.progress(progress_i)
+        st.caption(f"{done_i}/{TOTAL_ITEMS} — {progress_i * 100:.0f}%")
 
-        status.innerText =
-            "Chưa hoàn thành";
+st.markdown("---")
+st.subheader("📋 Nhật ký Housekeeping")
 
-        status.classList.remove("completed");
-    }
-}
-
-
-// Hoàn thành phòng
-function completeRoom(roomIndex) {
-
-    const checkboxes = document.querySelectorAll(
-        `#checklist-${roomIndex} input[type="checkbox"]`
-    );
-
-    const unchecked = [...checkboxes]
-        .filter(item => !item.checked);
-
-    if (unchecked.length > 0) {
-
-        alert(
-            "⚠️ Phòng chưa hoàn thành tất cả checklist!"
-        );
-
-        return;
-    }
-
-    alert(
-        `${rooms[roomIndex]} đã hoàn thành và sẵn sàng đón khách!`
-    );
-}
-
-
-createRooms();
-
-</script>
-
-</body>
-</html>
+if os.path.exists(HISTORY_FILE):
+    try:
+        history = pd.read_csv(HISTORY_FILE)
+        if not history.empty:
+            st.dataframe(history.sort_values("Thời gian", ascending=False),
+                         use_container_width=True, hide_index=True)
+        else:
+            st.info("Chưa có dữ liệu.")
+    except Exception as exc:
+        st.error(f"Không thể đọc dữ liệu: {exc}")
+else:
+    st.info("Chưa có nhật ký Housekeeping.")
